@@ -14,15 +14,6 @@ logging.basicConfig(format="%(asctime)s | %(levelname)s | %(message)s", level=lo
 def append_to_excel(excel_path: str, data_frame: pandas.DataFrame, sheet_name: str, full_name: str):
 	with pandas.ExcelWriter(excel_path, mode="a", engine="openpyxl") as excel_file:
 		data_frame.to_excel(excel_file, sheet_name=sheet_name, startcol=2, startrow=0)
-	change_cell(excel_path, full_name, sheet_name)
-
-
-def change_cell(excel_path, full_name, sheet_name):
-	excel = openpyxl.open(excel_path)
-	active_sheet = excel[sheet_name]
-	active_sheet['A1'] = full_name
-	excel.save(excel_path)
-	excel.close()
 
 
 def convert_json_to_excel(input_file: str, output_file: str):
@@ -30,10 +21,19 @@ def convert_json_to_excel(input_file: str, output_file: str):
 	json_df = pandas.json_normalize(json_string)
 	create_workbook(output_file)
 	tables = extract_dataframes(json_df)
-	for name, table in sorted(tables.items()):
+	sorted_tables = sorted(tables.items())
+	object_names = []
+	iterations = len(sorted_tables)
+	print("progress: |%s|" % "".rjust(iterations, ' '), end="\r")
+	i = 1
+	for name, table in sorted_tables:
 		sheet_name = create_short_name(name)
 		append_to_excel(output_file, table, sheet_name, name)
-	format_excel(output_file)
+		object_names.append(name)
+		print("progress: |%s%s|" % ("".rjust(i, '-'), "".rjust(iterations - i, ' ')), end="\r")
+		i += 1
+	print("")
+	format_excel(output_file, object_names)
 
 
 def create_short_name(name: str) -> str:
@@ -73,7 +73,6 @@ def extract_dataframes(df):
 	loop_again = False
 	while True:
 		for name, table in new_tables.copy().items():
-			changed_table = new_tables[name]
 			for column, cells in table.iteritems():
 				i = 1
 				change_table = False
@@ -85,11 +84,9 @@ def extract_dataframes(df):
 						change_table = True
 					i += 1
 				if change_table:
-					print(f"Table: {name}, column count before: {len(table.columns)}")
 					new_tables.pop(name)
 					new_tables[name] = table.drop(column, axis=1)
 					new_table = new_tables[name]
-					print(f"Table: {name}, column count after: {len(new_table.columns)}")
 					loop_again = True
 
 		if not loop_again:
@@ -105,15 +102,18 @@ def extract_json(input_file: str) -> Any:
 	return json_data
 
 
-def format_excel(output_file: str):
+def format_excel(output_file: str, object_names: []):
 	excel = openpyxl.open(output_file)
 	excel.remove(excel["temp"])
 	sheets = excel.sheetnames
+	i = 0
 	for sheet in sheets:
 		active_sheet = excel[sheet]
 		active_sheet.sheet_view.showGridLines = False
-		active_sheet.freeze_panes = 'A2'
+		active_sheet.freeze_panes = 'D2'
+		active_sheet['A1'] = object_names[i]
 		active_sheet['c1'] = "nr"
+
 		for column in active_sheet.columns:
 			column_name = get_column_letter(column[0].column)
 			maximum_value = 0
@@ -121,7 +121,8 @@ def format_excel(output_file: str):
 				val_to_check = len(str(cell.value))
 				if val_to_check > maximum_value:
 					maximum_value = val_to_check
-			active_sheet.column_dimensions[column_name].width = maximum_value + 1
+			active_sheet.column_dimensions[column_name].width = maximum_value + 5
+		i += 1
 	excel.save(output_file)
 	excel.close()
 
