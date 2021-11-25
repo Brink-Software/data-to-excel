@@ -1,11 +1,10 @@
 import argparse
 import csv
+import enum
 import json
 import logging
-import os
 import sys
 import time
-from pathlib import Path
 from typing import Any
 
 import openpyxl
@@ -13,6 +12,11 @@ import pandas
 from openpyxl.utils import get_column_letter
 
 logging.basicConfig(format="%(asctime)s | %(levelname)s | %(message)s", level=logging.INFO, datefmt="%Y-%m-%d %H:%M:%S")
+
+
+class Naming(enum.Enum):
+	fields = 1
+	tables = 2
 
 
 def append_to_excel(excel_path: str, data_frame: pandas.DataFrame, sheet_name: str, full_name: str):
@@ -70,8 +74,97 @@ def display_progress(i=0, iterations=None):
 	print("progress: |%s%s|" % ("".rjust(i, '-'), "".rjust(iterations - i, ' ')), end="\r")
 
 
-def extract_csv(input_file):
-	with open(input_file, encoding="utf-8") as csv_file:
+def get_dictionary(choice: Naming):
+	if choice == choice.fields:
+		return {"afd": "afdrukken", "alg": "algemene begrotingsgegevens", "altcde": "de alternatieve code",
+		        "bbd": "staart", "bdr": "bedrag", "bdrpcthvh": "bedrag percentage hoeveelheid",
+		        "beschsts": "beschikbaarheidsstatus voor ib.nl", "bgharb": "doorgerekende arbeid",
+		        "bghmta": "doorgerekend materiaal", "bghmte": "doorgerekend materieel",
+		        "bghoda": "doorgerekende onderaanneming", "bghtot": "doorgerekend bedrag",
+		        "bglarb": "opslag arbeid", "bglmta": "opslag materiaal", "bglmte": "opslag materieel",
+		        "bgloda": "opslag voor onderaanneming", "bgltot": "opslag totaal", "bgrvltid": "valuta id",
+		        "bloksts": "blokkeerstatus voor ib.nl", "bstcde": "bestekcodering", "btoarb": "bruto arbeid",
+		        "btohvh": "bruto hoeveelheid", "btomta": "bruto materiaal", "btomte": "bruto materieel",
+		        "btooda": "bruto onderaanneming", "btostr": "bruto staart", "btotot": "bruto totaal",
+		        "btwarb": "btw arbeid", "btwmta": "btw materiaal", "btwmte": "btw materieel",
+		        "btwoda": "btw voor onderaanneming", "bva": "begrotingsvaluta's", "bvaid": "basisvaluta id",
+		        "bwcarb": "nacalculatiecode voor arbeid", "bwcmta": "nacalculatiecode voor materiaal",
+		        "bwcmte": "nacalculatiecode voor materieel", "bwcoda": "nacalculatiecode voor onderaanneming",
+		        "cat": "categorie", "cclcde": "de code van de calculatie regel", "cmt": "commentaren",
+		        "cmtid": "commentaar id", "datum": "datum", "dla": "drieletterafkorting",
+		        "docintid": "document id", "dri": "doorrekenindicatie", "dtm": "datum",
+		        "eanartcde": "gtin code van het artikel", "egs": "eigenschappen", "egsid": "eigenschap id",
+		        "elt": "elementen", "eltid": "element id", "enh": "eenheid",
+		        "enhprs": "de handmatig ingevulde eenheidsprijs", "enhprsmta": "eenheidsprijs materiaal",
+		        "enhprsmte": "eenheidsprijs materieel", "enhprsoda": "eenheidsprijs voor onderaanneming",
+		        "facarb": "factor arbeid", "fachvh": "factor hoeveelheid", "facmta": "factor materiaal",
+		        "facmte": "factor materieel", "facoda": "factor voor onderaanneming", "fml": "formule",
+		        "freq": "frequentie", "fto": "foto", "gtl": "getal", "hvh": "hoeveelheid",
+		        "ibcode": "unieke code voor ib.nl", "inbjt": "inschrijfbiljet", "invind": "invoegindicatie",
+		        "kid": "koppelings-ID", "klm": "kolom", "klmid": "kolom id",
+		        "kltkrtpct": "klantkortingspercentage", "koers": "koers", "krtgrpcde": "kortingsgroepcode",
+		        "kst": "kosten", "ktp": "kostenposten", "ktpid": "kostenpost id",
+		        "levartcode": "leverancier artikel code", "levartprdt": "leverancier artikelprijs datum",
+		        "levbrmatpr": "leverancier bruto materiaalprijs", "levgtincde": "leverancier gtin code",
+		        "levkrtpct": "leverancierskortingspercentage", "levnaam": "leverancier naam",
+		        "lngtxt": "langtekst", "loccde": "locatie codering", "mdl": "meetstaat modellen",
+		        "mdlid": "model id", "mid": "middelen", "midcde": "middelcode", "midid": "middel id",
+		        "mki": "modelkolom id", "mmk": "meetstaatmodelkolommen", "mpt": "multipliciteit",
+		        "msc": "meetstaatcellen", "msk": "meetstaatkolommen", "msr": "meetstaatrijen",
+		        "mst": "meetstaten", "mstid": "meetstaat id", "mstkid": "meetstaatkoppeling id",
+		        "mtnguid": "meting guid", "nme": "naam", "nr": "nummer", "ntoarb": "netto arbeid",
+		        "ntobto": "is netto of bruto", "ntomta": "netto materiaal", "ntomte": "netto materieel",
+		        "ntooda": "netto onderaanneming", "ntostr": "netto staart", "ntotot": "netto totaal",
+		        "offertenaam": "offertenaam", "oid": "object id", "oms": "omschrijving",
+		        "ondcde": "onderhoudscode", "opm": "opmaak", "plncde": "plan codering", "pom": "meetstaat naam",
+		        "prdfact": "productie capaciteit", "prjid": "project id", "prtid": "parent id",
+		        "pstaard": "aard van de (sub)bestekspost t.b.v. afrekening", "rgl": "regel",
+		        "rglid": "meetstaatregel id", "rglnr": "regelnummer", "rij": "rij", "rko": "reservekopie",
+		        "scenario": "scenario", "sgk": "standaard gekoppelde kolom id", "sie": "sectie",
+		        "sjb": "sjablonen", "sjbid": "sjabloon id", "snt": "sneltoets", "srt": "soort",
+		        "stk": "stuurcode (totalen hiervan worden verzameld en bijgehouden)", "sts": "status",
+		        "stt": "staart", "stu": "structuren", "tblnme": "tabelnaam", "tblsrt": "tabelsoort",
+		        "teken": "teken", "tij": "tijd", "tijenh": "tijdseenheid", "tkn": "tekening",
+		        "tlt": "toelichting", "totuur": "uren", "tpe": "type", "txt": "tekst", "ulb": "uurloonbedragen",
+		        "ulc": "uurlooncomponenten", "ulncde": "uurlooncode",
+		        "untnrmbb": "tijdnorm bestaande bouw (uneto)",
+		        "untnrmbl": "tijdnorm bestaande bouw leeg (uneto)",
+		        "untnrmne": "tijdnorm nieuwbouw eenmalig (uneto)",
+		        "untnrmnr": "tijdnorm nieuwbouw repeterend (uneto)", "unttaakcde": "uneto-taakcode",
+		        "url": "url", "usr": "user", "uur": "aantal uren", "uurnrm": "uurnorm",
+		        "uurnrmtpe": "uurnormtype", "vbld": "bevat voorblad", "vlgnr": "volgnummer", "vlt": "valuta",
+		        "vrs": "versie", "vzp": "verzamelpunten", "vzpid": "stuurcode", "wde": "waarde",
+		        "wzgdtm": "wijzigingsdatum", "TradbegrotingIbis.bgr.dtm": "datum",
+		        "TradbegrotingIbis.bgr.oms": "omschrijving", "TradbegrotingIbis.bgr.ntotot": "netto totaal",
+		        "TradbegrotingIbis.bgr.btomta": "bruto materiaal", "TradbegrotingIbis.bgr.usr": "user",
+		        "TradbegrotingIbis.bgr.prjid": "project id", "TradbegrotingIbis.bgr.freq": "frequentie",
+		        "TradbegrotingIbis.bgr.nme": "naam", "TradbegrotingIbis.bgr.vlt": "valuta",
+		        "TradbegrotingIbis.bgr.ntooda": "netto onderaanneming",
+		        "TradbegrotingIbis.bgr.ntostr": "netto staart",
+		        "TradbegrotingIbis.bgr.btooda": "bruto onderaanneming", "TradbegrotingIbis.bgr.vrs": "versie",
+		        "TradbegrotingIbis.bgr.totuur": "uren", "TradbegrotingIbis.bgr.btomte": "bruto materieel",
+		        "TradbegrotingIbis.bgr.bvaid": "basisvaluta id",
+		        "TradbegrotingIbis.bgr.inbjt": "inschrijfbiljet",
+		        "TradbegrotingIbis.bgr.btoarb": "bruto arbeid", "TradbegrotingIbis.bgr.btostr": "bruto staart",
+		        "TradbegrotingIbis.bgr.btotot": "bruto totaal",
+		        "TradbegrotingIbis.bgr.ntomta": "netto materiaal",
+		        "TradbegrotingIbis.bgr.ntomte": "netto materieel",
+		        "TradbegrotingIbis.bgr.vbld": "bevat voorblad", "TradbegrotingIbis.bgr.tpe": "type",
+		        "TradbegrotingIbis.bgr.rko": "reservekopie", "TradbegrotingIbis.bgr.ntoarb": "netto arbeid",
+		        "TradbegrotingIbis.bgr.invind": "invoegindicatie"}
+	elif choice == choice.tables:
+		return {"TradbegrotingIbis.alg": "algemene begrotingsgegevens", "TradbegrotingIbis.bbd": "staart",
+		        "TradbegrotingIbis.bva": "begrotingsvaluta's", "TradbegrotingIbis.cmt": "commentaren",
+		        "TradbegrotingIbis.egs": "eigenschappen", "TradbegrotingIbis.elt": "elementen",
+		        "TradbegrotingIbis.ktp": "kostenposten", "TradbegrotingIbis.mdl": "meetstaat modellen",
+		        "TradbegrotingIbis.mid": "middelen", "TradbegrotingIbis.mmk": "meetstaatmodelkolommen",
+		        "TradbegrotingIbis.msc": "meetstaatcellen", "TradbegrotingIbis.msk": "meetstaatkolommen",
+		        "TradbegrotingIbis.msr": "meetstaatrijen", "TradbegrotingIbis.mst": "meetstaten",
+		        "TradbegrotingIbis.sjb": "sjablonen", "TradbegrotingIbis.stu": "structuren",
+		        "TradbegrotingIbis.ulb": "uurloonbedragen", "TradbegrotingIbis.ulc": "uurlooncomponenten",
+		        "TradbegrotingIbis.vzp": "verzamelpunten"}
+
+	with open(choice, encoding="utf-8") as csv_file:
 		next(csv_file)
 		csv_reader = csv.reader(csv_file, delimiter=",", skipinitialspace=True)
 		return dict(csv_reader)
@@ -120,11 +213,8 @@ def extract_json(input_file: str) -> Any:
 
 
 def fetch_proper_names(df: pandas.DataFrame, sheet_name: str) -> (pandas.DataFrame, str):
-	root = Path(os.getcwd()).parent
-	dictionary_path = os.path.join(root, "configs", "dictionary.csv")
-	dictionary = extract_csv(dictionary_path)
-	tables_path = os.path.join(root, "configs", "tables.csv")
-	tables = extract_csv(tables_path)
+	dictionary = get_dictionary(Naming.fields)
+	tables = get_dictionary(Naming.tables)
 	if sheet_name in tables:
 		new_sheet_name = tables[sheet_name]
 	else:
