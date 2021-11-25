@@ -1,6 +1,7 @@
 import argparse
 import json
 import logging
+import sys
 import time
 from typing import Any
 
@@ -24,16 +25,22 @@ def convert_json_to_excel(input_file: str, output_file: str):
 	sorted_tables = sorted(tables.items())
 	object_names = []
 	iterations = len(sorted_tables)
-	print("progress: |%s|" % "".rjust(iterations, ' '), end="\r")
+	display_progress(iterations=iterations)
 	i = 1
 	for name, table in sorted_tables:
 		sheet_name = create_short_name(name)
 		append_to_excel(output_file, table, sheet_name, name)
 		object_names.append(name)
-		print("progress: |%s%s|" % ("".rjust(i, '-'), "".rjust(iterations - i, ' ')), end="\r")
+		display_progress(i, iterations)
 		i += 1
 	print("")
 	format_excel(output_file, object_names)
+
+
+def display_progress(i=0, iterations=None):
+	if iterations is None:
+		iterations = []
+	print("progress: |%s%s|" % ("".rjust(i, '-'), "".rjust(iterations - i, ' ')), end="\r")
 
 
 def create_short_name(name: str) -> str:
@@ -145,7 +152,11 @@ if __name__ == '__main__':
 	output_path = arguments["outputpath"]
 
 	start_time = time.perf_counter()
-	convert_json_to_excel(input_path, output_path)
+	try:
+		convert_json_to_excel(input_path, output_path)
+	except Exception as exception:
+		logging.critical(f"This error happened: {exception.__str__()}\nPlease try again.")
+		sys.exit(0)
 	end_time = time.perf_counter()
 
 	logging.info(f"Excel file with tables created in {end_time - start_time:0.4f} seconds: {output_path}")
