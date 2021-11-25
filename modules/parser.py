@@ -1,8 +1,11 @@
 import argparse
+import csv
 import json
 import logging
+import os
 import sys
 import time
+from pathlib import Path
 from typing import Any
 
 import openpyxl
@@ -28,19 +31,13 @@ def convert_json_to_excel(input_file: str, output_file: str):
 	display_progress(iterations=iterations)
 	i = 1
 	for name, table in sorted_tables:
-		sheet_name = create_short_name(name)
-		append_to_excel(output_file, table, sheet_name, name)
+		table_extended, sheet_name = fetch_proper_names(df=table, sheet_name=name)
+		append_to_excel(output_file, table_extended, sheet_name, name)
 		object_names.append(name)
 		display_progress(i, iterations)
 		i += 1
 	print("")
 	format_excel(output_file, object_names)
-
-
-def display_progress(i=0, iterations=None):
-	if iterations is None:
-		iterations = []
-	print("progress: |%s%s|" % ("".rjust(i, '-'), "".rjust(iterations - i, ' ')), end="\r")
 
 
 def create_short_name(name: str) -> str:
@@ -65,6 +62,19 @@ def create_workbook(output_file: str):
 	sheet = workbook.active
 	sheet.title = "temp"
 	workbook.save(filename=output_file)
+
+
+def display_progress(i=0, iterations=None):
+	if iterations is None:
+		iterations = []
+	print("progress: |%s%s|" % ("".rjust(i, '-'), "".rjust(iterations - i, ' ')), end="\r")
+
+
+def extract_csv(input_file):
+	with open(input_file, encoding="utf-8") as csv_file:
+		next(csv_file)
+		csv_reader = csv.reader(csv_file, delimiter=",", skipinitialspace=True)
+		return dict(csv_reader)
 
 
 def extract_dataframes(df):
@@ -107,6 +117,28 @@ def extract_json(input_file: str) -> Any:
 	with open(input_file, encoding="utf-8") as json_file:
 		json_data = json.load(json_file)
 	return json_data
+
+
+def fetch_proper_names(df: pandas.DataFrame, sheet_name: str) -> (pandas.DataFrame, str):
+	root = Path(os.getcwd()).parent
+	dictionary_path = os.path.join(root, "configs", "dictionary.csv")
+	dictionary = extract_csv(dictionary_path)
+	tables_path = os.path.join(root, "configs", "tables.csv")
+	tables = extract_csv(tables_path)
+	if sheet_name in tables:
+		new_sheet_name = tables[sheet_name]
+	else:
+		new_sheet_name = create_short_name(sheet_name)
+
+	new_df = df
+	for field, value in df.iteritems():
+		if field in dictionary:
+			full_value = dictionary[field]
+			new_name = f"{full_value} ({field})"
+		else:
+			new_name = field
+		new_df = new_df.rename({field: new_name}, axis="columns")
+	return new_df, new_sheet_name
 
 
 def format_excel(output_file: str, object_names: []):

@@ -1,0 +1,20 @@
+tabel,naam
+TradbegrotingIbis.alg,algemene begrotingsgegevens
+TradbegrotingIbis.bbd,staart
+TradbegrotingIbis.bva,begrotingsvaluta's
+TradbegrotingIbis.cmt,commentaren
+TradbegrotingIbis.egs,eigenschappen
+TradbegrotingIbis.elt,elementen
+TradbegrotingIbis.ktp,kostenposten
+TradbegrotingIbis.mdl,meetstaat modellen
+TradbegrotingIbis.mid,middelen
+TradbegrotingIbis.mmk,meetstaatmodelkolommen
+TradbegrotingIbis.msc,meetstaatcellen
+TradbegrotingIbis.msk,meetstaatkolommen
+TradbegrotingIbis.msr,meetstaatrijen
+TradbegrotingIbis.mst,meetstaten
+TradbegrotingIbis.sjb,sjablonen
+TradbegrotingIbis.stu,structuren
+TradbegrotingIbis.ulb,uurloonbedragen
+TradbegrotingIbis.ulc,uurlooncomponenten
+TradbegrotingIbis.vzp,verzamelpunten
