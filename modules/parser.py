@@ -1,5 +1,4 @@
 import argparse
-import csv
 import enum
 import json
 import logging
@@ -19,7 +18,7 @@ class Naming(enum.Enum):
 	tables = 2
 
 
-def append_to_excel(excel_path: str, data_frame: pandas.DataFrame, sheet_name: str, full_name: str):
+def append_to_excel(excel_path: str, data_frame: pandas.DataFrame, sheet_name: str):
 	with pandas.ExcelWriter(excel_path, mode="a", engine="openpyxl") as excel_file:
 		data_frame.to_excel(excel_file, sheet_name=sheet_name, startcol=2, startrow=0)
 
@@ -36,7 +35,7 @@ def convert_json_to_excel(input_file: str, output_file: str):
 	i = 1
 	for name, table in sorted_tables:
 		table_extended, sheet_name = fetch_proper_names(df=table, sheet_name=name)
-		append_to_excel(output_file, table_extended, sheet_name, name)
+		append_to_excel(output_file, table_extended, sheet_name)
 		object_names.append(name)
 		display_progress(i, iterations)
 		i += 1
@@ -164,11 +163,6 @@ def get_dictionary(choice: Naming):
 		        "TradbegrotingIbis.ulb": "uurloonbedragen", "TradbegrotingIbis.ulc": "uurlooncomponenten",
 		        "TradbegrotingIbis.vzp": "verzamelpunten"}
 
-	with open(choice, encoding="utf-8") as csv_file:
-		next(csv_file)
-		csv_reader = csv.reader(csv_file, delimiter=",", skipinitialspace=True)
-		return dict(csv_reader)
-
 
 def extract_dataframes(df):
 	columns_list = []
@@ -196,7 +190,6 @@ def extract_dataframes(df):
 				if change_table:
 					new_tables.pop(name)
 					new_tables[name] = table.drop(column, axis=1)
-					new_table = new_tables[name]
 					loop_again = True
 
 		if not loop_again:
