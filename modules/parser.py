@@ -11,7 +11,6 @@ from typing import Any
 import openpyxl
 import pandas
 import xmltodict
-from cool import F
 from openpyxl.utils import get_column_letter
 
 logging.basicConfig(format="%(asctime)s | %(levelname)s | %(message)s", level=logging.INFO, datefmt="%Y-%m-%d %H:%M:%S")
@@ -58,7 +57,7 @@ def convert_xml_to_json(input_file: str) -> str:
 		with open(input_file) as xml_file:
 			data_dict = xmltodict.parse(xml_file.read())
 			xml_file.close()
-			return json.dumps(data_dict) | F(json.loads)
+			return json.loads(json.dumps(data_dict))
 	else:
 		logging.critical(f"This is no .xml file: {input_file}\nPlease try again.")
 		sys.exit(0)
