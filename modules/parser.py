@@ -47,6 +47,7 @@ def convert_serialized_to_excel(input_file: str, output_file: str, type_file: Fi
 		json_string = convert_yml_to_json(input_file)
 
 	json_df = pandas.json_normalize(json_string)
+	json_name = list(json_string.keys())[0]
 	create_workbook(output_file)
 	tables = extract_dataframes(json_df)
 	sorted_tables = sorted(tables.items())
@@ -54,6 +55,8 @@ def convert_serialized_to_excel(input_file: str, output_file: str, type_file: Fi
 	iterations = len(sorted_tables)
 	display_progress(iterations=iterations)
 	for i, (name, table) in enumerate(sorted_tables, start=1):
+		if name == "1":
+			name = json_name
 		table_extended, sheet_name = fetch_proper_names(dataframe=table, sheet_name=name)
 		append_to_excel(output_file, table_extended, sheet_name)
 		object_names.append(name)
@@ -112,7 +115,7 @@ def display_progress(i=0, iterations=None):
 	print("progress: |%s%s|" % (empty.rjust(i, '-'), empty.rjust(iterations - i, ' ')), end="\r")
 
 
-def extract_dataframes(dataframe):
+def extract_dataframes(dataframe: pandas.DataFrame):
 	"""This function is to extract flattened dataframes from dataframes with nested data in multiple levels"""
 	tables_head = flatten_first_level(dataframe)
 	return flatten_other_levels(tables_head)
@@ -156,7 +159,7 @@ def flatten_first_level(dataframe):
 			new_tables[value.name] = pandas.DataFrame(value.values[0], columns=[value.name])
 		else:
 			new_tables[value.name] = pandas.json_normalize(value.values[0])
-	new_tables["ROOT"] = dataframe[columns_list]
+	new_tables["1"] = dataframe[columns_list]
 	return new_tables
 
 
@@ -164,7 +167,6 @@ def flatten_from_nested(tables):
 	"""This function flattens tables from the second or higher level of nesting"""
 	loop_again = False
 	new_tables = tables
-	did_something_change = False
 	for name, table in new_tables.copy().items():
 		for column, cells in table.iteritems():
 			change_table = False
