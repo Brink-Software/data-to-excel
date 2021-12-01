@@ -8,6 +8,7 @@ import sys
 import time
 from typing import Any
 
+import bios
 import openpyxl
 import pandas
 import xmltodict
@@ -22,19 +23,29 @@ class Naming(enum.Enum):
 	TABLES = 2
 
 
+class FileType(enum.Enum):
+	"""This class is for choosing out of three types of files"""
+	JSON = 1
+	XML = 2
+	YML = 3
+
+
 def append_to_excel(excel_path: str, data_frame: pandas.DataFrame, sheet_name: str):
 	"""This method creates a new sheet for placing the table/dataframe in an existing workbook"""
 	with pandas.ExcelWriter(excel_path, mode="a", engine="openpyxl") as excel_file:
 		data_frame.to_excel(excel_file, sheet_name=sheet_name, startcol=2, startrow=0)
 
 
-def convert_serialized_to_excel(input_file: str, output_file: str, is_json_file: bool):
+def convert_serialized_to_excel(input_file: str, output_file: str, type_file: FileType):
 	"""This function is main function to convert an input JSON or XML file to an Excel file with a sheet for every
 	flattened table """
-	if is_json_file:
+	if type_file == FileType.JSON:
 		json_string = extract_json(input_file)
-	else:
+	elif type_file == FileType.XML:
 		json_string = convert_xml_to_json(input_file)
+	else:
+		json_string = convert_yml_to_json(input_file)
+
 	json_df = pandas.json_normalize(json_string)
 	create_workbook(output_file)
 	tables = extract_dataframes(json_df)
@@ -56,31 +67,17 @@ def convert_xml_to_json(input_file: str) -> str:
 	if input_file.split(".")[-1] == "xml":
 		with open(input_file) as xml_file:
 			data_dict = xmltodict.parse(xml_file.read())
-			xml_file.close()
 			return json.loads(json.dumps(data_dict))
-	else:
-		logging.critical(f"This is no .xml file: {input_file}\nPlease try again.")
-		sys.exit(0)
+	logging.critical(f"This is no .xml file: {input_file}\nPlease try again.")
+	sys.exit(0)
 
 
-def flatten_from_nested(again, tables):
-	"""This function flattens tables from the second or higher level of nesting"""
-	loop_again = again
-	new_tables = tables
-	for name, table in new_tables.copy().items():
-		for column, cells in table.iteritems():
-			change_table = False
-			for i, value in enumerate(cells.values, start=1):
-				if isinstance(value, list):
-					new_column = f"{name}.{column}{i}"
-					new_df = pandas.json_normalize(value)
-					new_tables[new_column] = new_df
-					change_table = True
-			if change_table:
-				new_tables.pop(name)
-				new_tables[name] = table.drop(column, axis=1)
-				loop_again = True
-	return loop_again, new_tables
+def convert_yml_to_json(input_file: str) -> str:
+	"""This function inputs a YML file and outputs a json string"""
+	if input_file.split(".")[-1] == "yml":
+		return bios.read(input_file)
+	logging.critical(f"This is no .yml file: {input_file}\nPlease try again.")
+	sys.exit(0)
 
 
 def create_short_name(name: str) -> str:
@@ -155,17 +152,39 @@ def flatten_first_level(dataframe):
 	for field, value in dataframe.iteritems():
 		if not isinstance(value.values[0], list):
 			columns_list.append(value.name)
+		elif isinstance(value.values[0][0], str):
+			new_tables[value.name] = pandas.DataFrame(value.values[0], columns=[value.name])
 		else:
 			new_tables[value.name] = pandas.json_normalize(value.values[0])
 	new_tables["ROOT"] = dataframe[columns_list]
 	return new_tables
 
 
+def flatten_from_nested(tables):
+	"""This function flattens tables from the second or higher level of nesting"""
+	loop_again = False
+	new_tables = tables
+	did_something_change = False
+	for name, table in new_tables.copy().items():
+		for column, cells in table.iteritems():
+			change_table = False
+			for i, value in enumerate(cells.values, start=1):
+				if isinstance(value, list):
+					new_column = f"{name}.{column}{i}"
+					new_df = pandas.json_normalize(value)
+					new_tables[new_column] = new_df
+					change_table = True
+			if change_table:
+				new_tables.pop(name)
+				new_tables[name] = table.drop(column, axis=1)
+				loop_again = True
+	return loop_again, new_tables
+
+
 def flatten_other_levels(tables):
 	"""This function loops through tables to scan for nested tables and to add new tables for these"""
-	loop_again = False
 	while True:
-		loop_again, new_tables = flatten_from_nested(loop_again, tables)
+		loop_again, new_tables = flatten_from_nested(tables)
 		if not loop_again:
 			break
 
@@ -296,6 +315,17 @@ def get_dictionary(choice: Naming):
 	        "TradbegrotingIbis.vzp": "verzamelpunten"}
 
 
+def get_file_type(args: dict[str, Any]) -> FileType:
+	"""This function returns the file type from the arguments input"""
+	json_file = args["json"]
+	xml_file = args["xml"]
+	if json_file:
+		return FileType.JSON
+	if xml_file:
+		return FileType.XML
+	return FileType.YML
+
+
 def parse_arguments() -> dict[str, Any]:
 	"""Function for command line arguments to run the application"""
 	argument_parser = argparse.ArgumentParser()
@@ -308,6 +338,7 @@ def parse_arguments() -> dict[str, Any]:
 	argument_group = argument_parser.add_mutually_exclusive_group(required=True)
 	argument_group.add_argument("-j", "--json", action="store_true", help="Input file is a .json file")
 	argument_group.add_argument("-x", "--xml", action="store_true", help="Input file is a .xml file")
+	argument_group.add_argument("-y", "--yml", action="store_true", help="Input file is a .yml file")
 	return vars(argument_parser.parse_args())
 
 
@@ -315,11 +346,11 @@ if __name__ == '__main__':
 	arguments = parse_arguments()
 	input_path = arguments["inputpath"]
 	output_path = arguments["outputpath"]
-	is_json = arguments["json"]
+	file_type = get_file_type(arguments)
 
 	start_time = time.perf_counter()
 	try:
-		convert_serialized_to_excel(input_path, output_path, is_json)
+		convert_serialized_to_excel(input_path, output_path, file_type)
 	except Exception as exception:
 		logging.critical(f"This error happened: {exception.__str__()}\nPlease try again.")
 		sys.exit(0)
