@@ -21,7 +21,7 @@ logging.basicConfig(format="%(asctime)s | %(levelname)s | %(message)s", level=lo
 
 
 class Naming(enum.Enum):
-	"""This class is to enable a single choice in renaming fields are tables"""
+	"""This class is to enable a single choice in renaming fields or tables"""
 	FIELDS = 1
 	TABLES = 2
 
@@ -39,20 +39,7 @@ def append_to_excel(excel_path: str, data_frame: pandas.DataFrame, sheet_name: s
 		data_frame.to_excel(excel_file, sheet_name=sheet_name, startcol=2, startrow=0)
 
 
-def index_to_one(dataframe: pandas.DataFrame) -> pandas.DataFrame:
-	"""This is a helper method to change the start index of the dataframe from 0 to 1"""
-	dataframe.index += 1
-	return dataframe
-
-
-def update_indices(dataframes: dict[pandas.DataFrame]) -> dict[pandas.DataFrame]:
-	"""This function updates the start indices of the dataframes to 1"""
-	for name in dataframes:
-		index_to_one(dataframes[name])
-	return dataframes
-
-
-def convert_serialized_to_excel(input_file: str, output_file: str, type_file: FileType):
+def convert_data_to_excel(input_file: str, output_file: str, type_file: FileType):
 	"""This function is main function to convert an input JSON or XML file to an Excel file with a sheet for every
 	flattened table """
 	if type_file == FileType.JSON:
@@ -346,6 +333,12 @@ def get_file_type(args: dict[str, Any]) -> FileType:
 	return FileType.YML
 
 
+def index_to_one(dataframe: pandas.DataFrame) -> pandas.DataFrame:
+	"""This is a helper method to change the start index of the dataframe from 0 to 1"""
+	dataframe.index += 1
+	return dataframe
+
+
 def parse_arguments() -> dict[str, Any]:
 	"""Function for command line arguments to run the application"""
 	argument_parser = argparse.ArgumentParser()
@@ -362,6 +355,13 @@ def parse_arguments() -> dict[str, Any]:
 	return vars(argument_parser.parse_args())
 
 
+def update_indices(dataframes: dict[pandas.DataFrame]) -> dict[pandas.DataFrame]:
+	"""This function updates the start indices of the dataframes to 1"""
+	for name in dataframes:
+		index_to_one(dataframes[name])
+	return dataframes
+
+
 if __name__ == '__main__':
 	arguments = parse_arguments()
 	input_path = arguments["inputpath"]
@@ -370,7 +370,7 @@ if __name__ == '__main__':
 
 	start_time = time.perf_counter()
 	try:
-		convert_serialized_to_excel(input_path, output_path, file_type)
+		convert_data_to_excel(input_path, output_path, file_type)
 	except Exception as exception:
 		logging.critical(f"This error happened: {exception.__str__()}\nPlease try again.")
 		sys.exit(0)
