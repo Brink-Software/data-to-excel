@@ -39,6 +39,19 @@ def append_to_excel(excel_path: str, data_frame: pandas.DataFrame, sheet_name: s
 		data_frame.to_excel(excel_file, sheet_name=sheet_name, startcol=2, startrow=0)
 
 
+def index_to_one(dataframe: pandas.DataFrame) -> pandas.DataFrame:
+	"""This is a helper method to change the start index of the dataframe from 0 to 1"""
+	dataframe.index += 1
+	return dataframe
+
+
+def update_indices(dataframes: dict[pandas.DataFrame]) -> dict[pandas.DataFrame]:
+	"""This function updates the start indices of the dataframes to 1"""
+	for name in dataframes:
+		index_to_one(dataframes[name])
+	return dataframes
+
+
 def convert_serialized_to_excel(input_file: str, output_file: str, type_file: FileType):
 	"""This function is main function to convert an input JSON or XML file to an Excel file with a sheet for every
 	flattened table """
@@ -53,14 +66,16 @@ def convert_serialized_to_excel(input_file: str, output_file: str, type_file: Fi
 	json_name = list(json_string.keys())[0]
 	create_workbook(output_file)
 	tables = extract_dataframes(json_df)
-	sorted_tables = sorted(tables.items())
+	update_indices(tables)
+	sorted_tables = sorted(tables)
 	object_names = []
 	iterations = len(sorted_tables)
 	display_progress(iterations=iterations)
-	for i, (name, table) in enumerate(sorted_tables, start=1):
+	for i, name in enumerate(sorted_tables, start=1):
+		dataframe = tables[name]
 		if name == "1":
 			name = json_name
-		table_extended, sheet_name = fetch_proper_names(dataframe=table, sheet_name=name)
+		table_extended, sheet_name = fetch_proper_names(dataframe=dataframe, sheet_name=name)
 		append_to_excel(output_file, table_extended, sheet_name)
 		object_names.append(name)
 		display_progress(i, iterations)
