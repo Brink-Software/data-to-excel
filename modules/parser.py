@@ -1,4 +1,7 @@
-"""This application is for parsing well formatted xml and json files and convert them into flattened Excel tables"""
+"""
+This application is for parsing well formatted xml and json files and convert them into flattened Excel tables
+This is the command to build the executable: pyinstaller .\datatoexcel.exe.spec --onefile -n datatoexcel.exe
+"""
 
 import argparse
 import enum
