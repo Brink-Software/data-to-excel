@@ -7,6 +7,8 @@ import argparse
 import enum
 import json
 import logging
+import random
+import string
 import sys
 import time
 from typing import Any
@@ -35,8 +37,15 @@ class FileType(enum.Enum):
 
 def append_to_excel(excel_path: str, data_frame: pandas.DataFrame, sheet_name: str):
 	"""This method creates a new sheet for placing the table/dataframe in an existing workbook"""
-	with pandas.ExcelWriter(excel_path, mode="a", engine="openpyxl") as excel_file:
-		data_frame.to_excel(excel_file, sheet_name=sheet_name, startcol=2, startrow=0)
+	try:
+		with pandas.ExcelWriter(excel_path, mode="a", engine="openpyxl") as excel_file:
+			data_frame.to_excel(excel_file, sheet_name=sheet_name, startcol=2, startrow=0)
+	except Exception as err:
+		alternative_sheet_name = create_alternative_name(sheet_name)
+		logging.warning(
+			f"This error happened: {err.__str__()}\nSolved bij replacing sheet name {sheet_name} with {alternative_sheet_name}")
+		with pandas.ExcelWriter(excel_path, mode="a", engine="openpyxl") as excel_file:
+			data_frame.to_excel(excel_file, sheet_name=alternative_sheet_name, startcol=2, startrow=0)
 
 
 def convert_data_to_excel(input_file: str, output_file: str, type_file: FileType):
@@ -86,6 +95,15 @@ def convert_yml_to_json(input_file: str) -> str:
 		return bios.read(input_file)
 	logging.critical(f"This is no .yml file: {input_file}\nPlease try again.")
 	sys.exit(0)
+
+
+def create_alternative_name(name: str) -> str:
+	"""This function creates an alternative name to prevent duplicate naming"""
+	length_half_name = int(len(name) / 2)
+	first_half = name[:length_half_name]
+	letters = string.ascii_lowercase
+	second_half = "".join(random.choice(letters) for i in range(length_half_name))
+	return f"{first_half}{second_half}"
 
 
 def create_short_name(name: str) -> str:
