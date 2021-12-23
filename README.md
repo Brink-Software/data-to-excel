@@ -7,4 +7,4 @@ Command line tool to convert a json/xml/yml file into an excel file with for eve
 3. Tabnine
 
 ## building the executable 
-This is the command to build the executable: pyinstaller .\datatoexcel.exe.spec --onefile -n datatoexcel.exe
+This is the command to build the executable from within the modules directory: pyinstaller .\datatoexcel.exe.spec --onefile -n datatoexcel.exe
